@@ -1,0 +1,2735 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的世界大富翁 - Minecraft Monopoly</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+            color: #fff;
+        }
+
+        /* 星空背景 */
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 3s infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        /* 游戏容器 */
+        #gameContainer {
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px #00ff00, 0 0 40px #00ff00;
+            background: linear-gradient(45deg, #00ff00, #00ffff, #ff00ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* 主菜单 */
+        #mainMenu {
+            text-align: center;
+            padding: 50px;
+        }
+
+        .menu-btn {
+            display: block;
+            width: 280px;
+            margin: 20px auto;
+            padding: 18px 40px;
+            font-size: 1.3em;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .menu-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: left 0.5s;
+        }
+
+        .menu-btn:hover::before {
+            left: 100%;
+        }
+
+        .btn-single {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+        }
+
+        .btn-double {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            color: white;
+            box-shadow: 0 5px 15px rgba(33, 150, 243, 0.4);
+        }
+
+        .btn-rules {
+            background: linear-gradient(135deg, #FF9800, #F57C00);
+            color: white;
+            box-shadow: 0 5px 15px rgba(255, 152, 0, 0.4);
+        }
+
+        .menu-btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        /* 游戏区域 */
+        #gameArea {
+            display: none;
+            grid-template-columns: 1fr 320px;
+            gap: 20px;
+        }
+
+        /* 平面棋盘容器 */
+        .board-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .board {
+            width: 640px;
+            height: 640px;
+            background: linear-gradient(135deg, #2d5016, #1a3009);
+            border-radius: 20px;
+            box-shadow:
+                0 0 0 8px #5d4037,
+                0 0 0 12px #3e2723,
+                0 20px 60px rgba(0,0,0,0.5);
+            position: relative;
+        }
+
+        /* 草地纹理背景 */
+        .board::before {
+            content: '';
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            bottom: 10px;
+            background-image:
+                repeating-linear-gradient(0deg, transparent, transparent 20px, rgba(0,0,0,0.03) 20px, rgba(0,0,0,0.03) 22px),
+                repeating-linear-gradient(90deg, transparent, transparent 20px, rgba(0,0,0,0.03) 20px, rgba(0,0,0,0.03) 22px);
+            border-radius: 12px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* 中心区域 - 位于棋盘中央，避开外围格子 */
+        .board-center {
+            position: absolute;
+            top: 114px;
+            left: 114px;
+            width: 412px;
+            height: 412px;
+            background: linear-gradient(135deg, #87CEEB 0%, #5dade2 50%, #3498db 100%);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.2);
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        /* 云朵装饰 */
+        .cloud {
+            position: absolute;
+            background: rgba(255,255,255,0.6);
+            border-radius: 50px;
+        }
+
+        .cloud::before,
+        .cloud::after {
+            content: '';
+            position: absolute;
+            background: rgba(255,255,255,0.6);
+            border-radius: 50%;
+        }
+
+        .cloud1 {
+            width: 60px;
+            height: 20px;
+            top: 30px;
+            left: 30px;
+        }
+
+        .cloud1::before {
+            width: 30px;
+            height: 30px;
+            top: -15px;
+            left: 8px;
+        }
+
+        .cloud1::after {
+            width: 25px;
+            height: 25px;
+            top: -10px;
+            right: 8px;
+        }
+
+        .cloud2 {
+            width: 50px;
+            height: 18px;
+            bottom: 40px;
+            right: 40px;
+        }
+
+        .cloud2::before {
+            width: 25px;
+            height: 25px;
+            top: -12px;
+            left: 6px;
+        }
+
+        .cloud2::after {
+            width: 20px;
+            height: 20px;
+            top: -8px;
+            right: 6px;
+        }
+
+        .center-logo {
+            font-size: 3.5em;
+            text-shadow: 3px 3px 0 rgba(0,0,0,0.3);
+            z-index: 2;
+        }
+
+        .center-text {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin-top: 10px;
+            z-index: 2;
+        }
+
+        /* 格子样式 - 绝对定位 */
+        .cell {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(145deg, #f5f5f5, #e0e0e0);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+            text-align: center;
+            padding: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow:
+                0 3px 6px rgba(0,0,0,0.16),
+                0 3px 6px rgba(0,0,0,0.23),
+                inset 0 1px 0 rgba(255,255,255,0.8);
+            border: 2px solid #ccc;
+            z-index: 10;
+        }
+
+        .cell:hover {
+            transform: scale(1.08) translateY(-3px);
+            box-shadow:
+                0 8px 15px rgba(0,0,0,0.3),
+                inset 0 1px 0 rgba(255,255,255,0.9);
+            z-index: 10;
+        }
+
+        .cell-icon {
+            font-size: 2em;
+            margin-bottom: 2px;
+            filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.3));
+        }
+
+        .cell-name {
+            font-size: 9px;
+            line-height: 1.2;
+            color: #333;
+            text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+        }
+
+        .cell-price {
+            font-size: 10px;
+            color: #2e7d32;
+            font-weight: bold;
+            margin-top: 2px;
+        }
+
+        /* 特殊格子样式 */
+        .cell-start {
+            background: linear-gradient(145deg, #FFD700, #FFA000);
+            border-color: #FF8F00;
+        }
+        .cell-start .cell-name { color: #5d4037; }
+
+        .cell-jail {
+            background: linear-gradient(145deg, #78909c, #546e7a);
+            border-color: #455a64;
+        }
+        .cell-jail .cell-name { color: #fff; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
+
+        .cell-chance {
+            background: linear-gradient(145deg, #E1BEE7, #CE93D8);
+            border-color: #AB47BC;
+        }
+        .cell-chance .cell-name { color: #4A148C; }
+
+        .cell-chest {
+            background: linear-gradient(145deg, #B2EBF2, #80DEEA);
+            border-color: #00BCD4;
+        }
+        .cell-chest .cell-name { color: #006064; }
+
+        .cell-tax {
+            background: linear-gradient(145deg, #FFCDD2, #EF9A9A);
+            border-color: #EF5350;
+        }
+        .cell-tax .cell-name { color: #B71C1C; }
+
+        .cell-go-jail {
+            background: linear-gradient(145deg, #424242, #212121);
+            border-color: #000;
+        }
+        .cell-go-jail .cell-name { color: #fff; }
+
+        /* 地产格子颜色组 - 增强标识 */
+        .cell-group-1 {
+            border-top: 8px solid #8D6E63;
+            background: linear-gradient(145deg, #f5f5f5, #e0e0e0);
+        }
+        .cell-group-1 .cell-name {
+            color: #5D4037;
+            font-weight: bold;
+        }
+
+        .cell-group-2 {
+            border-top: 8px solid #42A5F5;
+            background: linear-gradient(145deg, #f5f5f5, #e0e0e0);
+        }
+        .cell-group-2 .cell-name {
+            color: #1565C0;
+            font-weight: bold;
+        }
+
+        .cell-group-3 {
+            border-top: 8px solid #AB47BC;
+            background: linear-gradient(145deg, #f5f5f5, #e0e0e0);
+        }
+        .cell-group-3 .cell-name {
+            color: #7B1FA2;
+            font-weight: bold;
+        }
+
+        .cell-group-4 {
+            border-top: 8px solid #FF7043;
+            background: linear-gradient(145deg, #f5f5f5, #e0e0e0);
+        }
+        .cell-group-4 .cell-name {
+            color: #D84315;
+            font-weight: bold;
+        }
+
+        .cell-group-5 {
+            border-top: 8px solid #FFEE58;
+            background: linear-gradient(145deg, #f5f5f5, #e0e0e0);
+        }
+        .cell-group-5 .cell-name {
+            color: #F57F17;
+            font-weight: bold;
+        }
+
+        .cell-group-6 {
+            border-top: 8px solid #66BB6A;
+            background: linear-gradient(145deg, #f5f5f5, #e0e0e0);
+        }
+        .cell-group-6 .cell-name {
+            color: #2E7D32;
+            font-weight: bold;
+        }
+
+        /* 分组标识标签 */
+        .group-badge {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            font-size: 9px;
+            padding: 1px 4px;
+            border-radius: 3px;
+            background: rgba(0,0,0,0.7);
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .cell-group-1 .group-badge { background: #8D6E63; }
+        .cell-group-2 .group-badge { background: #42A5F5; }
+        .cell-group-3 .group-badge { background: #AB47BC; }
+        .cell-group-4 .group-badge { background: #FF7043; }
+        .cell-group-5 .group-badge { background: #FBC02D; color: #333; }
+        .cell-group-6 .group-badge { background: #66BB6A; }
+
+        /* 角落格子 */
+        .cell-corner {
+            grid-column: span 1;
+            grid-row: span 1;
+        }
+
+        .cell-corner .cell-icon {
+            font-size: 2.5em;
+        }
+
+        .cell-corner .cell-name {
+            font-size: 11px;
+        }
+
+        /* 玩家棋子 - 平面版本 */
+        .player {
+            position: absolute;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100;
+            box-shadow:
+                0 4px 8px rgba(0,0,0,0.5),
+                0 0 0 4px rgba(255,255,255,0.9),
+                0 0 0 6px rgba(0,0,0,0.3),
+                inset 0 -3px 8px rgba(0,0,0,0.3),
+                inset 0 3px 8px rgba(255,255,255,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            color: #fff;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+            /* 初始位置设为隐藏，等正确位置计算后再显示 */
+            left: -100px;
+            top: -100px;
+        }
+
+        .p1 {
+            background: radial-gradient(circle at 35% 35%, #ff6b6b, #c92a2a);
+        }
+
+        .p2 {
+            background: radial-gradient(circle at 35% 35%, #4dabf7, #1864ab);
+        }
+
+        .p3 {
+            background: radial-gradient(circle at 35% 35%, #c084fc, #7e22ce);
+        }
+
+        .p4 {
+            background: radial-gradient(circle at 35% 35%, #fb923c, #ea580c);
+        }
+
+        .p5 {
+            background: radial-gradient(circle at 35% 35%, #22d3ee, #0891b2);
+        }
+
+        .p6 {
+            background: radial-gradient(circle at 35% 35%, #a3e635, #65a30d);
+        }
+
+        .ai {
+            background: radial-gradient(circle at 35% 35%, #ffa94d, #d9480f);
+        }
+
+        /* 所有权标记 */
+        .owner-mark {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            top: 4px;
+            right: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            border: 2px solid #fff;
+            z-index: 5;
+        }
+
+        .owner-mark::after {
+            content: '★';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 8px;
+            color: #fff;
+        }
+
+        /* 房屋标记 */
+        .house-markers {
+            position: absolute;
+            bottom: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 2px;
+            z-index: 6;
+        }
+
+        .house-marker {
+            width: 12px;
+            height: 12px;
+            background: linear-gradient(135deg, #ff6b6b, #c92a2a);
+            border-radius: 2px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            border: 1px solid #fff;
+        }
+
+        .house-hotel {
+            width: 16px;
+            height: 12px;
+            background: linear-gradient(135deg, #9c27b0, #7b1fa2);
+            border-radius: 2px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            border: 1px solid #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            color: #fff;
+        }
+
+        /* 侧边栏 */
+        .sidebar {
+            background: rgba(0,0,0,0.6);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .player-info {
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 5px solid;
+            transition: all 0.3s;
+        }
+
+        .player-info.active {
+            background: rgba(255,255,255,0.2);
+            box-shadow: 0 0 20px rgba(255,255,255,0.3);
+            transform: scale(1.02);
+        }
+
+        .player-info.p1 { border-color: #ff4444; }
+        .player-info.p2 { border-color: #4444ff; }
+        .player-info.p3 { border-color: #9c27b0; }
+        .player-info.p4 { border-color: #ff5722; }
+        .player-info.p5 { border-color: #00bcd4; }
+        .player-info.p6 { border-color: #8bc34a; }
+        .player-info.ai { border-color: #ff8800; }
+
+        .player-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .player-badge {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+            border: 2px solid #fff;
+        }
+
+        .player-money {
+            font-size: 1.2em;
+            color: #FFD700;
+            font-weight: bold;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .player-position {
+            font-size: 0.9em;
+            color: #aaa;
+            margin-top: 5px;
+        }
+
+        .player-properties {
+            margin-top: 10px;
+            font-size: 0.85em;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .property-tag {
+            background: rgba(255,255,255,0.2);
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+        }
+
+        /* 控制区 */
+        .controls {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .dice-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .dice {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(145deg, #fff, #e0e0e0);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2em;
+            color: #333;
+            box-shadow:
+                0 8px 16px rgba(0,0,0,0.3),
+                inset 0 2px 4px rgba(255,255,255,0.8);
+            transition: transform 0.3s;
+            border: 2px solid #ccc;
+        }
+
+        .dice.rolling {
+            animation: roll 0.4s ease infinite;
+        }
+
+        @keyframes roll {
+            0% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(90deg) scale(1.1); }
+            50% { transform: rotate(180deg) scale(1); }
+            75% { transform: rotate(270deg) scale(1.1); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+
+        .control-btn {
+            padding: 14px 32px;
+            font-size: 1.1em;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 8px 5px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .btn-roll {
+            background: linear-gradient(135deg, #66BB6A, #43A047);
+            color: white;
+        }
+
+        .btn-buy {
+            background: linear-gradient(135deg, #42A5F5, #1E88E5);
+            color: white;
+        }
+
+        .btn-build {
+            background: linear-gradient(135deg, #FF9800, #F57C00);
+            color: white;
+        }
+
+        .btn-end {
+            background: linear-gradient(135deg, #EF5350, #D32F2F);
+            color: white;
+        }
+
+        .control-btn:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
+
+        .control-btn:active:not(:disabled) {
+            transform: translateY(-1px);
+        }
+
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            filter: grayscale(0.5);
+        }
+
+        /* 游戏日志 */
+        .game-log {
+            background: rgba(0,0,0,0.4);
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 20px;
+            max-height: 220px;
+            overflow-y: auto;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .log-entry {
+            padding: 6px 10px;
+            margin: 4px 0;
+            border-radius: 6px;
+            font-size: 0.9em;
+            line-height: 1.4;
+            border-left: 3px solid transparent;
+        }
+
+        .log-entry.system {
+            color: #aaa;
+            background: rgba(255,255,255,0.05);
+        }
+        .log-entry.p1 {
+            color: #ff8888;
+            background: rgba(255,68,68,0.1);
+            border-left-color: #ff4444;
+        }
+        .log-entry.p2 {
+            color: #8888ff;
+            background: rgba(68,68,255,0.1);
+            border-left-color: #4444ff;
+        }
+        .log-entry.p3 {
+            color: #ce93d8;
+            background: rgba(156,39,176,0.1);
+            border-left-color: #9c27b0;
+        }
+        .log-entry.p4 {
+            color: #ffab91;
+            background: rgba(255,87,34,0.1);
+            border-left-color: #ff5722;
+        }
+        .log-entry.p5 {
+            color: #80deea;
+            background: rgba(0,188,212,0.1);
+            border-left-color: #00bcd4;
+        }
+        .log-entry.p6 {
+            color: #c5e1a5;
+            background: rgba(139,195,74,0.1);
+            border-left-color: #8bc34a;
+        }
+        .log-entry.ai {
+            color: #ffaa44;
+            background: rgba(255,136,0,0.1);
+            border-left-color: #ff8800;
+        }
+        .log-entry.event {
+            color: #FFD700;
+            background: rgba(255,215,0,0.1);
+            border-left-color: #FFD700;
+        }
+
+        /* 交易按钮 */
+        .btn-trade {
+            background: linear-gradient(135deg, #9C27B0, #7B1FA2);
+            color: white;
+        }
+
+        /* 交易弹窗样式 */
+        .trade-modal {
+            max-width: 700px !important;
+            width: 90%;
+        }
+
+        .trade-confirm-modal {
+            max-width: 500px !important;
+        }
+
+        .trade-container {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .trade-side {
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 15px;
+        }
+
+        .trade-side h3 {
+            margin-bottom: 15px;
+            color: #FFD700;
+            font-size: 1.1em;
+        }
+
+        .trade-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .trade-section {
+            margin-bottom: 15px;
+        }
+
+        .trade-section label {
+            display: block;
+            margin-bottom: 5px;
+            color: #aaa;
+            font-size: 0.9em;
+        }
+
+        .trade-input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            background: rgba(0,0,0,0.3);
+            color: #fff;
+            font-size: 1em;
+        }
+
+        .trade-select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            background: rgba(0,0,0,0.3);
+            color: #fff;
+            font-size: 1em;
+            cursor: pointer;
+        }
+
+        .trade-properties {
+            max-height: 150px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            padding: 8px;
+        }
+
+        .trade-property-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            margin: 4px 0;
+            background: rgba(255,255,255,0.1);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .trade-property-item:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .trade-property-item.selected {
+            background: rgba(76,175,80,0.4);
+            border: 2px solid #4CAF50;
+        }
+
+        .trade-property-item input[type="checkbox"] {
+            margin-right: 8px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .trade-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .btn-cancel {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+        }
+
+        .btn-confirm {
+            background: linear-gradient(135deg, #4CAF50, #388E3C);
+        }
+
+        .trade-details {
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 15px 0;
+            text-align: left;
+        }
+
+        .trade-details h4 {
+            color: #FFD700;
+            margin-bottom: 10px;
+        }
+
+        .trade-details-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* 弹窗 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            border-radius: 20px;
+            padding: 35px;
+            max-width: 450px;
+            text-align: center;
+            animation: modalIn 0.3s ease;
+            border: 4px solid;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        @keyframes modalIn {
+            from { transform: scale(0.8) translateY(-20px); opacity: 0; }
+            to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+
+        .modal-content.chance { border-color: #E040FB; }
+        .modal-content.chest { border-color: #00BCD4; }
+        .modal-content.tax { border-color: #f44336; }
+        .modal-content.jail { border-color: #616161; }
+        .modal-content.win { border-color: #FFD700; }
+        .modal-content.normal { border-color: #4CAF50; }
+
+        .modal h2 {
+            margin-bottom: 20px;
+            font-size: 1.9em;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .modal-icon {
+            font-size: 4.5em;
+            margin: 25px 0;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+            animation: bounce 1s ease infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .modal-text {
+            font-size: 1.2em;
+            line-height: 1.6;
+            margin-bottom: 25px;
+            color: #ecf0f1;
+        }
+
+        .modal-btn {
+            padding: 12px 35px;
+            font-size: 1.1em;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #66BB6A, #43A047);
+            color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+
+        .modal-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
+
+        /* 规则页面 */
+        #rulesPage {
+            display: none;
+            background: rgba(0,0,0,0.8);
+            border-radius: 20px;
+            padding: 35px;
+            max-width: 850px;
+            margin: 0 auto;
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+
+        #rulesPage h2 {
+            color: #FFD700;
+            margin-bottom: 25px;
+            font-size: 2em;
+            text-align: center;
+        }
+
+        #rulesPage ul {
+            text-align: left;
+            line-height: 2;
+            list-style: none;
+        }
+
+        #rulesPage li {
+            margin: 15px 0;
+            padding: 12px 15px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            border-left: 4px solid #4CAF50;
+        }
+
+        #rulesPage li strong {
+            color: #FFD700;
+        }
+
+        .back-btn {
+            margin-top: 25px;
+            padding: 14px 45px;
+            font-size: 1.2em;
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
+
+        /* 悬浮提示 */
+        .tooltip {
+            position: fixed;
+            background: rgba(0,0,0,0.95);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            pointer-events: none;
+            z-index: 1000;
+            display: none;
+            max-width: 220px;
+            border: 2px solid rgba(255,255,255,0.2);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+        }
+
+        .tooltip-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #FFD700;
+            margin-bottom: 6px;
+        }
+
+        .tooltip-info {
+            line-height: 1.5;
+        }
+
+        /* 粒子效果 */
+        .particle {
+            position: fixed;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        /* 当前玩家标记 */
+        .current-turn {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #FFD700;
+            color: #333;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            z-index: 60;
+        }
+
+        /* 响应式 */
+        @media (max-width: 1200px) {
+            #gameArea {
+                grid-template-columns: 1fr;
+            }
+
+            .board {
+                width: 440px;
+                height: 440px;
+            }
+
+            .board-center {
+                top: 80px;
+                left: 80px;
+                width: 278px;
+                height: 278px;
+            }
+
+            .cell {
+                width: 68px;
+                height: 68px;
+            }
+
+            .cell-icon {
+                font-size: 1.4em;
+            }
+
+            .cell-name {
+                font-size: 7px;
+            }
+
+            .player {
+                width: 28px;
+                height: 28px;
+                font-size: 10px;
+            }
+
+            .center-logo {
+                font-size: 2em;
+            }
+
+            .center-text {
+                font-size: 0.9em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 星空背景 -->
+    <div class="stars" id="stars"></div>
+
+    <div id="gameContainer">
+        <h1>🏰 我的世界大富翁 🏰</h1>
+        <div style="text-align: center; color: #aaa; font-size: 0.9em; margin-top: -15px; margin-bottom: 20px; letter-spacing: 2px;">designed by Ray</div>
+
+        <!-- 主菜单 -->
+        <div id="mainMenu">
+            <div style="margin-bottom: 10px; color: #FFD700; font-size: 1.1em;">选择游戏模式</div>
+            <button class="menu-btn btn-single" onclick="startGame(1)">🎮 单人游戏 (1人 vs AI)</button>
+            <div style="margin: 15px 0; color: #aaa; font-size: 0.9em;">多人对战</div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 400px; margin: 0 auto;">
+                <button class="menu-btn btn-double" onclick="startGame(2)" style="width: auto; padding: 12px;">👥 2人</button>
+                <button class="menu-btn" onclick="startGame(3)" style="width: auto; padding: 12px; background: linear-gradient(135deg, #9C27B0, #7B1FA2);">👥 3人</button>
+                <button class="menu-btn" onclick="startGame(4)" style="width: auto; padding: 12px; background: linear-gradient(135deg, #FF5722, #E64A19);">👥 4人</button>
+                <button class="menu-btn" onclick="startGame(5)" style="width: auto; padding: 12px; background: linear-gradient(135deg, #00BCD4, #0097A7);">👥 5人</button>
+                <button class="menu-btn" onclick="startGame(6)" style="width: auto; padding: 12px; background: linear-gradient(135deg, #8BC34A, #689F38);">👥 6人</button>
+            </div>
+            <button class="menu-btn btn-rules" onclick="showRules()" style="margin-top: 20px;">📜 游戏规则</button>
+        </div>
+
+        <!-- 规则页面 -->
+        <div id="rulesPage">
+            <h2>📜 游戏规则</h2>
+            <ul>
+                <li><strong>🏃 移动：</strong>掷骰子前进，根据点数移动到相应位置</li>
+                <li><strong>🏠 购买地产：</strong>停留在空地时可以购买，拥有后其他玩家停留需支付租金</li>
+                <li><strong>🏗️ 建造房屋：</strong>拥有完整颜色组可以建造房屋增加租金</li>
+                <li><strong>❓ 机会：</strong>紫色格子触发随机事件，可能获得奖励或受到惩罚</li>
+                <li><strong>📦 宝藏：</strong>青色格子获得随机奖励</li>
+                <li><strong>⛓️ 监狱：</strong>灰色格子，停留一回合或支付保释金</li>
+                <li><strong>💰 税收：</strong>红色格子需要缴纳税款</li>
+                <li><strong>🚔 入狱：</strong>黑色格子直接送入监狱</li>
+                <li><strong>🎯 胜利条件：</strong>其他玩家破产即获胜！</li>
+            </ul>
+            <div style="text-align: center;">
+                <button class="back-btn" onclick="hideRules()">返回主菜单</button>
+            </div>
+        </div>
+
+        <!-- 游戏区域 -->
+        <div id="gameArea">
+            <div class="board-container">
+                <div class="board" id="board">
+                    <!-- 中心区域 -->
+                    <div class="board-center">
+                        <div class="cloud cloud1"></div>
+                        <div class="cloud cloud2"></div>
+                        <div class="center-logo">⛏️</div>
+                        <div class="center-text">MINECRAFT<br>MONOPOLY</div>
+                    </div>
+                    <!-- 格子将通过JS生成 -->
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div id="playerInfos"></div>
+
+                <div class="controls">
+                    <div class="dice-container">
+                        <div class="dice" id="dice1">🎲</div>
+                        <div class="dice" id="dice2">🎲</div>
+                    </div>
+                    <button class="control-btn btn-roll" id="rollBtn" onclick="rollDice()">🎲 掷骰子</button>
+                    <button class="control-btn btn-buy" id="buyBtn" onclick="buyProperty()" disabled>💰 购买地产</button>
+                    <button class="control-btn btn-build" id="buildBtn" onclick="buildHouse()" disabled>🏠 建造房屋</button>
+                    <button class="control-btn btn-trade" id="tradeBtn" onclick="openTradeModal()" disabled>🤝 发起交易</button>
+                    <button class="control-btn btn-end" id="endBtn" onclick="endTurn()" disabled>⏭️ 结束回合</button>
+                </div>
+
+                <div class="game-log" id="gameLog">
+                    <div class="log-entry system">游戏开始！</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗 -->
+    <div class="modal" id="modal">
+        <div class="modal-content" id="modalContent">
+            <h2 id="modalTitle"></h2>
+            <div class="modal-icon" id="modalIcon"></div>
+            <p class="modal-text" id="modalText"></p>
+            <button class="modal-btn" onclick="closeModal()">确定</button>
+        </div>
+    </div>
+
+    <!-- 悬浮提示 -->
+    <div class="tooltip" id="tooltip"></div>
+
+    <!-- 交易弹窗 -->
+    <div class="modal" id="tradeModal">
+        <div class="modal-content trade-modal" id="tradeModalContent">
+            <h2>🤝 发起交易</h2>
+            <div class="trade-container">
+                <!-- 左侧：我的出价 -->
+                <div class="trade-side">
+                    <h3>你的出价</h3>
+                    <div class="trade-section">
+                        <label>💰 金额:</label>
+                        <input type="number" id="tradeOfferMoney" min="0" max="1500" value="0" class="trade-input">
+                    </div>
+                    <div class="trade-section">
+                        <label>🏠 地产:</label>
+                        <div id="tradeOfferProperties" class="trade-properties"></div>
+                    </div>
+                </div>
+
+                <!-- 中间：交易对象 -->
+                <div class="trade-center">
+                    <div style="font-size: 2em;">➡️</div>
+                    <select id="tradeTarget" class="trade-select">
+                        <option value="">选择交易对象</option>
+                    </select>
+                </div>
+
+                <!-- 右侧：请求 -->
+                <div class="trade-side">
+                    <h3>你的请求</h3>
+                    <div class="trade-section">
+                        <label>💰 金额:</label>
+                        <input type="number" id="tradeRequestMoney" min="0" max="1500" value="0" class="trade-input">
+                    </div>
+                    <div class="trade-section">
+                        <label>🏠 地产:</label>
+                        <div id="tradeRequestProperties" class="trade-properties"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="trade-buttons">
+                <button class="modal-btn btn-cancel" onclick="closeTradeModal()">取消</button>
+                <button class="modal-btn btn-confirm" onclick="submitTradeOffer()">发起交易</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 交易确认弹窗 -->
+    <div class="modal" id="tradeConfirmModal">
+        <div class="modal-content trade-confirm-modal">
+            <h2>📨 收到交易请求</h2>
+            <div id="tradeOfferDetails" class="trade-details"></div>
+            <div class="trade-buttons">
+                <button class="modal-btn btn-cancel" onclick="rejectTrade()">拒绝</button>
+                <button class="modal-btn btn-confirm" onclick="acceptTrade()">接受交易</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 游戏配置
+        const BOARD_SIZE = 20;
+        const START_MONEY = 1500;
+
+        // 格子类型
+        const CELL_TYPES = {
+            START: 'start',
+            PROPERTY: 'property',
+            CHANCE: 'chance',
+            CHEST: 'chest',
+            TAX: 'tax',
+            JAIL: 'jail',
+            GO_JAIL: 'go_jail'
+        };
+
+        // 格子数据 - 使用更精美的emoji
+        // 地产增加 houseCost(建房费用) 和 houseRents(各级房屋租金)
+        // 分组策略: 14个地产分为6组 - 2组×3个 + 4组×2个
+        const cells = [
+            { id: 0, type: CELL_TYPES.START, name: '起点', icon: '🏁', desc: '经过获得 $200' },
+            { id: 1, type: CELL_TYPES.PROPERTY, name: '橡木森林', group: 1, price: 60, rent: 10, houseCost: 50, houseRents: [30, 90, 160, 250], icon: '🌳', desc: '茂密的橡树林' },
+            { id: 2, type: CELL_TYPES.CHEST, name: '宝箱', icon: '📦', desc: '获得随机奖励' },
+            { id: 3, type: CELL_TYPES.PROPERTY, name: '白桦树林', group: 1, price: 80, rent: 15, houseCost: 50, houseRents: [45, 120, 200, 300], icon: '🌲', desc: '洁白的桦木林' },
+            { id: 4, type: CELL_TYPES.PROPERTY, name: '云杉树林', group: 1, price: 100, rent: 20, houseCost: 50, houseRents: [60, 150, 250, 400], icon: '🎄', desc: '寒冷的针叶林' },
+            { id: 5, type: CELL_TYPES.TAX, name: '所得税', amount: 200, icon: '💸', desc: '缴纳税款 $200' },
+            { id: 6, type: CELL_TYPES.PROPERTY, name: '废弃矿井', group: 2, price: 120, rent: 25, houseCost: 50, houseRents: [75, 180, 300, 450], icon: '⛏️', desc: '旧矿井遗址' },
+            { id: 7, type: CELL_TYPES.CHANCE, name: '机会', icon: '❓', desc: '随机事件' },
+            { id: 8, type: CELL_TYPES.JAIL, name: '监狱', icon: '⛓️', desc: '停留一回合' },
+            { id: 9, type: CELL_TYPES.PROPERTY, name: '沙漠神殿', group: 3, price: 140, rent: 30, houseCost: 100, houseRents: [90, 220, 360, 550], icon: '🏜️', desc: '神秘的沙漠遗迹' },
+            { id: 10, type: CELL_TYPES.PROPERTY, name: '丛林神庙', group: 3, price: 160, rent: 35, houseCost: 100, houseRents: [105, 250, 420, 600], icon: '🌴', desc: '丛林中的宝藏' },
+            { id: 11, type: CELL_TYPES.PROPERTY, name: '沼泽小屋', group: 3, price: 180, rent: 40, houseCost: 100, houseRents: [120, 300, 500, 700], icon: '🛖', desc: '女巫的住所' },
+            { id: 12, type: CELL_TYPES.CHEST, name: '宝箱', icon: '🎁', desc: '获得随机奖励' },
+            { id: 13, type: CELL_TYPES.PROPERTY, name: '海底神殿', group: 4, price: 200, rent: 45, houseCost: 100, houseRents: [135, 330, 550, 750], icon: '🌊', desc: '深海中的宫殿' },
+            { id: 14, type: CELL_TYPES.PROPERTY, name: '下界要塞', group: 4, price: 220, rent: 50, houseCost: 150, houseRents: [150, 380, 620, 850], icon: '🔥', desc: '危险的地狱堡垒' },
+            { id: 15, type: CELL_TYPES.GO_JAIL, name: '入狱', icon: '🚔', desc: '直接送入监狱' },
+            { id: 16, type: CELL_TYPES.PROPERTY, name: '末地城', group: 5, price: 240, rent: 55, houseCost: 150, houseRents: [165, 410, 670, 900], icon: '🏰', desc: '浮空岛屿城堡' },
+            { id: 17, type: CELL_TYPES.PROPERTY, name: '末地船', group: 5, price: 260, rent: 60, houseCost: 150, houseRents: [180, 440, 720, 950], icon: '🚢', desc: '神秘的飞艇' },
+            { id: 18, type: CELL_TYPES.CHANCE, name: '机会', icon: '🎲', desc: '随机事件' },
+            { id: 19, type: CELL_TYPES.PROPERTY, name: '林地府邸', group: 6, price: 300, rent: 70, houseCost: 200, houseRents: [200, 500, 800, 1100], icon: '🏚️', desc: '最珍贵的地产' }
+        ];
+
+        // 机会卡
+        const chanceCards = [
+            { text: '在矿洞里发现钻石！获得 $100', effect: 'money', value: 100, icon: '💎' },
+            { text: '被苦力怕炸伤！支付医疗费 $50', effect: 'money', value: -50, icon: '💥' },
+            { text: '与村民交易获利！获得 $75', effect: 'money', value: 75, icon: '🧑‍🌾' },
+            { text: '掉进岩浆！丢失 $100', effect: 'money', value: -100, icon: '🔥' },
+            { text: '发现废弃传送门！直接前进3格', effect: 'move', value: 3, icon: '🌀' },
+            { text: '被僵尸追赶！后退2格', effect: 'move', value: -2, icon: '🧟' },
+            { text: '赢得钓鱼比赛！获得 $50', effect: 'money', value: 50, icon: '🎣' },
+            { text: '遭遇掠夺者！支付 $80', effect: 'money', value: -80, icon: '🏹' }
+        ];
+
+        // 宝藏卡
+        const chestCards = [
+            { text: '打开宝箱发现金苹果！获得 $50', effect: 'money', value: 50, icon: '🍎' },
+            { text: '获得附魔装备！获得 $100', effect: 'money', value: 100, icon: '⚔️' },
+            { text: '银行利息！获得 $25', effect: 'money', value: 25, icon: '🏦' },
+            { text: '出售物品！获得 $75', effect: 'money', value: 75, icon: '💎' },
+            { text: '生日快乐！获得 $100', effect: 'money', value: 100, icon: '🎂' },
+            { text: '保险理赔！获得 $150', effect: 'money', value: 150, icon: '📋' }
+        ];
+
+        // 游戏状态
+        let gameState = {
+            players: [],
+            currentPlayer: 0,
+            mode: 1,
+            dice: [1, 1],
+            canBuy: false,
+            canBuild: false,
+            gameOver: false
+        };
+
+        // 房屋数据存储 - 每个地产的房屋等级 (0-4, 4=酒店)
+        let houseData = {};
+
+        // 初始化星空
+        function createStars() {
+            const starsContainer = document.getElementById('stars');
+            for (let i = 0; i < 100; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.animationDelay = Math.random() * 3 + 's';
+                starsContainer.appendChild(star);
+            }
+        }
+
+        // 获取格子的绝对位置坐标
+        // 棋盘布局: 20个格子均匀分布在四周 (5个/边)
+        // 角落位置: index 0(左下), 5(右下), 10(右上), 15(左上)
+        function getCellPosition(index, isSmall = false) {
+            const cellSize = isSmall ? 68 : 100;
+            const gap = 4;
+            const padding = isSmall ? 8 : 10;
+            const spacing = cellSize + gap;
+
+            // 正确的6x6网格布局，外围一圈放置格子
+            // 棋盘布局: 6x6网格，外围一圈放置20个格子
+            // 底边(row 5): index 0-5 (从左到右，col 0-5)
+            // 右边(col 5): index 6-9 (从下到上，row 4-1)
+            // 顶边(row 0): index 10-15 (从右到左，col 5-0)
+            // 左边(col 0): index 16-19 (从上到下，row 1-4)
+
+            if (index >= 0 && index <= 5) {
+                // 底边: 从左到右
+                return {
+                    left: padding + index * spacing,
+                    top: padding + 5 * spacing
+                };
+            } else if (index >= 6 && index <= 9) {
+                // 右边: 从下到上 (不含角落)
+                return {
+                    left: padding + 5 * spacing,
+                    top: padding + (10 - index) * spacing
+                };
+            } else if (index >= 10 && index <= 15) {
+                // 顶边: 从右到左
+                return {
+                    left: padding + (15 - index) * spacing,
+                    top: padding
+                };
+            } else {
+                // 左边: 从上到下 (不含角落，row 1-4)
+                return {
+                    left: padding,
+                    top: padding + (index - 15) * spacing
+                };
+            }
+        }
+
+        // 创建棋盘
+        function createBoard() {
+            const board = document.getElementById('board');
+            // 保留中心区域和玩家棋子
+            const center = board.querySelector('.board-center');
+            const players = [];
+            gameState.players.forEach((_, index) => {
+                const p = document.getElementById(`player-${index}`);
+                if (p) players.push(p);
+            });
+
+            // 移除旧格子（只移除cell类元素）
+            const oldCells = board.querySelectorAll('.cell');
+            oldCells.forEach(cell => cell.remove());
+
+            // 确保中心区域在DOM中
+            if (center && !board.contains(center)) {
+                board.appendChild(center);
+            }
+
+            // 检测是否使用小尺寸
+            const isSmall = window.innerWidth <= 1200;
+
+            // 创建格子
+            cells.forEach((cell, index) => {
+                const cellEl = document.createElement('div');
+                cellEl.className = `cell cell-${cell.type}`;
+                if (cell.group) {
+                    cellEl.className += ` cell-group-${cell.group}`;
+                }
+
+                // 角落格子 (新布局: 0=起点左下, 5=税收右下, 10=宝箱右上, 15=入狱左上)
+                if (index === 0 || index === 5 || index === 10 || index === 15) {
+                    cellEl.className += ' cell-corner';
+                }
+
+                const pos = getCellPosition(index, isSmall);
+                cellEl.style.left = pos.left + 'px';
+                cellEl.style.top = pos.top + 'px';
+                cellEl.id = `cell-${index}`;
+
+                // 添加分组标识
+                const groupBadge = cell.group ? `<span class="group-badge">${cell.group}组</span>` : '';
+
+                cellEl.innerHTML = `
+                    ${groupBadge}
+                    <div class="cell-icon">${cell.icon}</div>
+                    <div class="cell-name">${cell.name}</div>
+                    ${cell.price ? `<div class="cell-price">$${cell.price}</div>` : ''}
+                `;
+
+                // 添加所有权标记和房屋标记
+                const owner = getOwner(cell.id);
+                if (owner) {
+                    const mark = document.createElement('div');
+                    mark.className = 'owner-mark';
+                    mark.style.background = owner.color;
+                    cellEl.appendChild(mark);
+
+                    // 显示房屋
+                    const houseLevel = houseData[cell.id] || 0;
+                    if (houseLevel > 0) {
+                        const houseContainer = document.createElement('div');
+                        houseContainer.className = 'house-markers';
+
+                        if (houseLevel === 5) {
+                            // 酒店
+                            const hotel = document.createElement('div');
+                            hotel.className = 'house-hotel';
+                            hotel.textContent = 'H';
+                            houseContainer.appendChild(hotel);
+                        } else {
+                            // 普通房屋
+                            for (let i = 0; i < houseLevel; i++) {
+                                const house = document.createElement('div');
+                                house.className = 'house-marker';
+                                houseContainer.appendChild(house);
+                            }
+                        }
+                        cellEl.appendChild(houseContainer);
+                    }
+                }
+
+                // 悬浮提示
+                cellEl.addEventListener('mouseenter', (e) => showTooltip(e, cell));
+                cellEl.addEventListener('mouseleave', hideTooltip);
+
+                board.appendChild(cellEl);
+            });
+
+            // 重新添加玩家棋子（如果不在DOM中）
+            players.forEach(p => {
+                if (!board.contains(p)) {
+                    board.appendChild(p);
+                }
+            });
+
+            // 重新定位玩家
+            gameState.players.forEach((player, index) => {
+                let playerEl = document.getElementById(`player-${index}`);
+                if (!playerEl) {
+                    // 如果玩家元素不存在，重新创建
+                    playerEl = document.createElement('div');
+                    playerEl.className = `player ${player.class}`;
+                    playerEl.id = `player-${index}`;
+                    // 根据玩家索引显示不同标签
+                    if (player.isAI) {
+                        playerEl.textContent = 'AI';
+                    } else {
+                        playerEl.textContent = `P${index + 1}`;
+                    }
+                    board.appendChild(playerEl);
+                }
+                // 更新位置
+                updatePlayerPosition(index);
+            });
+        }
+
+        // 显示悬浮提示
+        function showTooltip(e, cell) {
+            const tooltip = document.getElementById('tooltip');
+            let content = `<div class="tooltip-title">${cell.icon} ${cell.name}</div>`;
+            content += `<div class="tooltip-info">${cell.desc}</div>`;
+
+            if (cell.type === CELL_TYPES.PROPERTY) {
+                const owner = getOwner(cell.id);
+                const houseLevel = houseData[cell.id] || 0;
+
+                // 分组信息
+                const groupNames = ['', '🟫 棕色组(3个)', '🔵 蓝色组(2个)', '🟣 紫色组(3个)', '🟠 橙色组(2个)', '🟡 黄色组(2个)', '🟢 绿色组(2个)'];
+                const groupColors = ['', '#8D6E63', '#42A5F5', '#AB47BC', '#FF7043', '#FBC02D', '#66BB6A'];
+                content += `<div style="margin-top:6px;color:${groupColors[cell.group]};font-weight:bold">所属分组: ${groupNames[cell.group]}</div>`;
+
+                // 显示同组其他地产
+                const groupProps = cells.filter(c => c.group === cell.group);
+                content += `<div style="margin-top:4px;font-size:10px;color:#888">`;
+                content += `同组地产: ${groupProps.map(p => p.name).join('、')}`;
+                content += `</div>`;
+
+                content += `<div style="margin-top:8px;color:#4CAF50">基础租金: $${cell.rent}</div>`;
+                content += `<div style="color:#FF9800">建房费用: $${cell.houseCost}</div>`;
+
+                // 显示各级租金
+                content += `<div style="margin-top:4px;font-size:11px;color:#aaa">`;
+                content += `1🏠:$${cell.houseRents[0]} 2🏠:$${cell.houseRents[1]}<br>`;
+                content += `3🏠:$${cell.houseRents[2]} 4🏠:$${cell.houseRents[3]}`;
+                content += `</div>`;
+
+                // 建房条件检查
+                if (owner) {
+                    content += `<div style="margin-top:8px;color:#FFD700">所有者: ${owner.name}</div>`;
+                    if (houseLevel > 0) {
+                        const houseText = houseLevel === 5 ? '🏨 酒店' : '🏠'.repeat(houseLevel);
+                        content += `<div style="color:#FF6B6B">当前等级: ${houseText}</div>`;
+                    }
+                    content += `<div style="color:#00BCD4;font-weight:bold">当前租金: $${calculateRent(cell, owner)}</div>`;
+
+                    // 显示建房条件
+                    const ownedInGroup = groupProps.filter(p => owner.properties.includes(p.id));
+                    if (ownedInGroup.length === groupProps.length) {
+                        if (houseLevel < 5) {
+                            content += `<div style="margin-top:6px;color:#4CAF50;font-weight:bold">✅ 可建造房屋!</div>`;
+                        } else {
+                            content += `<div style="margin-top:6px;color:#9E9E9E">已达到最高等级</div>`;
+                        }
+                    } else {
+                        content += `<div style="margin-top:6px;color:#FF5722">⚠️ 需集齐同组${groupProps.length}个地产才能建房<br>(已拥有 ${ownedInGroup.length}/${groupProps.length})</div>`;
+                    }
+                }
+            } else if (cell.type === CELL_TYPES.TAX) {
+                content += `<div style="margin-top:8px;color:#ff6b6b">税费: $${cell.amount}</div>`;
+            }
+
+            tooltip.innerHTML = content;
+            tooltip.style.display = 'block';
+            tooltip.style.left = e.clientX + 15 + 'px';
+            tooltip.style.top = e.clientY + 15 + 'px';
+        }
+
+        function hideTooltip() {
+            document.getElementById('tooltip').style.display = 'none';
+        }
+
+        // 开始游戏
+        function startGame(mode) {
+            gameState.mode = mode;
+
+            // 玩家配置：颜色和CSS类
+            const playerConfigs = [
+                { color: '#ff4444', class: 'p1', name: '玩家1' },
+                { color: '#4444ff', class: 'p2', name: '玩家2' },
+                { color: '#9c27b0', class: 'p3', name: '玩家3' },
+                { color: '#ff5722', class: 'p4', name: '玩家4' },
+                { color: '#00bcd4', class: 'p5', name: '玩家5' },
+                { color: '#8bc34a', class: 'p6', name: '玩家6' }
+            ];
+
+            gameState.players = [];
+
+            if (mode === 1) {
+                // 单人模式：玩家1 + AI
+                gameState.players.push({
+                    id: 0, name: '玩家1', money: START_MONEY, position: 0, properties: [],
+                    inJail: false, jailTurns: 0, color: playerConfigs[0].color, class: playerConfigs[0].class
+                });
+                gameState.players.push({
+                    id: 1, name: 'AI玩家', money: START_MONEY, position: 0, properties: [],
+                    inJail: false, jailTurns: 0, color: '#ff8800', class: 'ai', isAI: true
+                });
+            } else {
+                // 多人模式：2-6人
+                for (let i = 0; i < mode; i++) {
+                    gameState.players.push({
+                        id: i, name: playerConfigs[i].name, money: START_MONEY, position: 0, properties: [],
+                        inJail: false, jailTurns: 0, color: playerConfigs[i].color, class: playerConfigs[i].class
+                    });
+                }
+            }
+
+            gameState.currentPlayer = 0;
+            gameState.gameOver = false;
+
+            // 初始化房屋数据
+            houseData = {};
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                houseData[i] = 0;
+            }
+
+            document.getElementById('mainMenu').style.display = 'none';
+            document.getElementById('gameArea').style.display = 'grid';
+
+            createBoard();
+            createPlayers();
+            updatePlayerInfo();
+            addLog('游戏开始！玩家1先掷骰子', 'system');
+        }
+
+        // 创建玩家棋子
+        function createPlayers() {
+            // 先清除所有现有玩家棋子，防止重复
+            document.querySelectorAll('.player').forEach(el => el.remove());
+
+            gameState.players.forEach((player, index) => {
+                const playerEl = document.createElement('div');
+                playerEl.className = `player ${player.class}`;
+                playerEl.id = `player-${index}`;
+                // 根据玩家类型显示不同标签
+                if (player.isAI) {
+                    playerEl.textContent = 'AI';
+                } else {
+                    playerEl.textContent = `P${index + 1}`;
+                }
+                document.getElementById('board').appendChild(playerEl);
+                updatePlayerPosition(index);
+            });
+        }
+
+        // 更新玩家位置
+        function updatePlayerPosition(playerIndex) {
+            const player = gameState.players[playerIndex];
+            const cellEl = document.getElementById(`cell-${player.position}`);
+            const playerEl = document.getElementById(`player-${playerIndex}`);
+
+            if (!cellEl || !playerEl) {
+                console.log(`无法更新玩家${playerIndex}位置: cell=${!!cellEl}, player=${!!playerEl}`);
+                return;
+            }
+
+            // 检测是否使用小尺寸
+            const isSmall = window.innerWidth <= 1200;
+            const playerSize = isSmall ? 28 : 36;
+
+            // 计算相对位置
+            const cellLeft = parseInt(cellEl.style.left) || 0;
+            const cellTop = parseInt(cellEl.style.top) || 0;
+            const cellWidth = cellEl.offsetWidth || 100;
+            const cellHeight = cellEl.offsetHeight || 100;
+
+            // 棋子在格子中的位置 - 根据玩家索引导分配不同角落，避免重叠
+            // 将格子分成2x2网格，最多容纳4个玩家
+            // 扩展到支持6个玩家：使用偏移量区分
+            let offsetX, offsetY;
+
+            if (playerIndex === 0) {
+                // P1: 左上
+                offsetX = 4;
+                offsetY = 4;
+            } else if (playerIndex === 1) {
+                // P2/AI: 右下
+                offsetX = cellWidth - playerSize - 4;
+                offsetY = cellHeight - playerSize - 4;
+            } else if (playerIndex === 2) {
+                // P3: 右上
+                offsetX = cellWidth - playerSize - 4;
+                offsetY = 4;
+            } else if (playerIndex === 3) {
+                // P4: 左下
+                offsetX = 4;
+                offsetY = cellHeight - playerSize - 4;
+            } else if (playerIndex === 4) {
+                // P5: 中间偏左上
+                offsetX = cellWidth / 2 - playerSize / 2 - 2;
+                offsetY = cellHeight / 2 - playerSize / 2 - 2;
+            } else {
+                // P6: 中间偏右下
+                offsetX = cellWidth / 2 - playerSize / 2 + 2;
+                offsetY = cellHeight / 2 - playerSize / 2 + 2;
+            }
+
+            playerEl.style.left = (cellLeft + offsetX) + 'px';
+            playerEl.style.top = (cellTop + offsetY) + 'px';
+        }
+
+        // 更新玩家信息面板
+        function updatePlayerInfo() {
+            const container = document.getElementById('playerInfos');
+            container.innerHTML = '';
+
+            gameState.players.forEach((player, index) => {
+                const infoEl = document.createElement('div');
+                infoEl.className = `player-info ${player.class} ${index === gameState.currentPlayer ? 'active' : ''}`;
+
+                // 按组显示地产
+                const propertyByGroup = {};
+                const groupColors = ['', '#8D6E63', '#42A5F5', '#AB47BC', '#FF7043', '#FBC02D', '#66BB6A'];
+                const groupBadges = ['', '🟫', '🔵', '🟣', '🟠', '🟡', '🟢'];
+
+                player.properties.forEach(p => {
+                    const cell = cells[p];
+                    if (cell.group) {
+                        if (!propertyByGroup[cell.group]) propertyByGroup[cell.group] = [];
+                        propertyByGroup[cell.group].push(cell);
+                    }
+                });
+
+                let propsHTML = '';
+                for (let g = 1; g <= 6; g++) {
+                    if (propertyByGroup[g] && propertyByGroup[g].length > 0) {
+                        const groupSize = cells.filter(c => c.group === g).length;
+                        const isComplete = propertyByGroup[g].length === groupSize;
+                        const statusIcon = isComplete ? '✅' : groupBadges[g];
+                        const bgColor = isComplete ? groupColors[g] : 'transparent';
+                        const textColor = isComplete ? '#fff' : '#ccc';
+
+                        propsHTML += `<div style="margin:4px 0;padding:4px 8px;border-radius:6px;background:${isComplete ? groupColors[g] + '40' : 'rgba(255,255,255,0.05)'};border:1px solid ${isComplete ? groupColors[g] : 'transparent'};">`;
+                        propsHTML += `<span style="color:${isComplete ? groupColors[g] : '#888'};font-weight:bold;">${statusIcon} ${g}组 (${propertyByGroup[g].length}/${groupSize})</span>`;
+                        propsHTML += `<div style="margin-top:2px;">`;
+                        propertyByGroup[g].forEach(cell => {
+                            const houseLevel = houseData[cell.id] || 0;
+                            const houseIcon = houseLevel === 5 ? '🏨' : (houseLevel > 0 ? '🏠'.repeat(houseLevel) : '');
+                            propsHTML += `<span class="property-tag" style="background:${groupColors[g]}40;border:1px solid ${groupColors[g]};">${cell.icon} ${cell.name} ${houseIcon}</span>`;
+                        });
+                        propsHTML += `</div></div>`;
+                    }
+                }
+
+                if (propsHTML === '') {
+                    propsHTML = '<span style="color:#888">无地产</span>';
+                }
+
+                // 统计完整组数
+                let completeGroups = 0;
+                for (let g = 1; g <= 6; g++) {
+                    const groupProps = cells.filter(c => c.group === g);
+                    const ownedInGroup = player.properties.filter(p => {
+                        const cell = cells[p];
+                        return cell.group === g;
+                    }).length;
+                    if (ownedInGroup === groupProps.length && groupProps.length > 0) {
+                        completeGroups++;
+                    }
+                }
+
+                const currentCell = cells[player.position];
+
+                infoEl.innerHTML = `
+                    <div class="player-name">
+                        <span class="player-badge" style="background:${player.color}"></span>
+                        ${player.name} ${player.inJail ? '🔒' : ''}
+                        ${index === gameState.currentPlayer ? '<span style="font-size:0.7em;background:#FFD700;color:#333;padding:2px 8px;border-radius:10px;margin-left:8px;">当前</span>' : ''}
+                    </div>
+                    <div class="player-money">💰 $${player.money}</div>
+                    <div style="font-size:0.85em;color:#aaa;margin:4px 0;">集齐颜色组: ${completeGroups}/6 ${completeGroups > 0 ? '🔥' : ''}</div>
+                    <div class="player-position">📍 位置: ${currentCell.icon} ${currentCell.name}</div>
+                    <div class="player-properties">${propsHTML}</div>
+                `;
+
+                container.appendChild(infoEl);
+            });
+        }
+
+        // 掷骰子
+        async function rollDice() {
+            if (gameState.gameOver) return;
+
+            const player = gameState.players[gameState.currentPlayer];
+
+            if (player.inJail) {
+                handleJail();
+                return;
+            }
+
+            document.getElementById('rollBtn').disabled = true;
+
+            const dice1 = document.getElementById('dice1');
+            const dice2 = document.getElementById('dice2');
+
+            dice1.classList.add('rolling');
+            dice2.classList.add('rolling');
+
+            await sleep(600);
+
+            gameState.dice[0] = Math.floor(Math.random() * 6) + 1;
+            gameState.dice[1] = Math.floor(Math.random() * 6) + 1;
+
+            dice1.classList.remove('rolling');
+            dice2.classList.remove('rolling');
+
+            dice1.textContent = getDiceIcon(gameState.dice[0]);
+            dice2.textContent = getDiceIcon(gameState.dice[1]);
+
+            const total = gameState.dice[0] + gameState.dice[1];
+            addLog(`${player.name} 掷出了 ${total} 点 (${gameState.dice[0]}+${gameState.dice[1]})`, player.class);
+
+            await movePlayer(gameState.currentPlayer, total);
+            await handleCellEvent(gameState.currentPlayer);
+
+            updatePlayerInfo();
+
+            if (!gameState.gameOver) {
+                document.getElementById('endBtn').disabled = false;
+
+                // 启用交易按钮（当游戏有多于一个玩家时）
+                if (gameState.players.length > 1 && !player.isAI) {
+                    document.getElementById('tradeBtn').disabled = false;
+                }
+
+                if (player.isAI) {
+                    await sleep(1200);
+                    await aiTurn();
+                }
+            }
+        }
+
+        function getDiceIcon(num) {
+            const icons = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+            return icons[num - 1];
+        }
+
+        // 移动玩家
+        async function movePlayer(playerIndex, steps) {
+            const player = gameState.players[playerIndex];
+            addLog(`${player.name} 开始移动 ${steps} 步...`, 'system');
+
+            for (let i = 0; i < steps; i++) {
+                // 前进一步
+                player.position = (player.position + 1) % BOARD_SIZE;
+                updatePlayerPosition(playerIndex);
+
+                // 经过起点检测（只有真正经过时才给钱，不是落在起点）
+                if (player.position === 0) {
+                    player.money += 200;
+                    addLog(`${player.name} 经过起点，获得 $200`, 'event');
+                    createParticles(document.getElementById(`player-${playerIndex}`));
+                }
+
+                // 每步移动间隔 400ms，让移动更清晰
+                await sleep(400);
+            }
+
+            addLog(`${player.name} 到达 ${cells[player.position].name}`, player.class);
+        }
+
+        // 处理格子事件
+        async function handleCellEvent(playerIndex) {
+            const player = gameState.players[playerIndex];
+            const cell = cells[player.position];
+
+            switch (cell.type) {
+                case CELL_TYPES.START:
+                    player.money += 200;
+                    addLog(`${player.name} 到达起点，获得 $200`, 'event');
+                    showModal('起点', '🏁', `${player.name} 到达起点，获得 $200！`, 'win');
+                    break;
+
+                case CELL_TYPES.PROPERTY:
+                    const owner = getOwner(cell.id);
+                    if (!owner) {
+                        if (player.money >= cell.price) {
+                            gameState.canBuy = true;
+                            document.getElementById('buyBtn').disabled = false;
+                            addLog(`${cell.name} 可购买，价格 $${cell.price}`, 'system');
+                        } else {
+                            addLog(`${player.name} 资金不足，无法购买 ${cell.name}`, player.class);
+                        }
+                    } else if (owner.id !== player.id) {
+                        const rent = calculateRent(cell, owner);
+                        player.money -= rent;
+                        owner.money += rent;
+                        addLog(`${player.name} 支付租金 $${rent} 给 ${owner.name}`, player.class);
+
+                        if (player.money < 0) {
+                            handleBankruptcy(playerIndex);
+                        }
+                    } else {
+                        addLog(`${player.name} 回到了自己的 ${cell.name}`, player.class);
+                        // 检查是否可以建造房屋
+                        const currentLevel = houseData[cell.id] || 0;
+                        const groupProps = cells.filter(c => c.group === cell.group);
+                        const ownedInGroup = groupProps.filter(c => player.properties.includes(c.id));
+                        const groupNames = ['', '棕色组', '蓝色组', '紫色组', '橙色组', '黄色组', '绿色组'];
+
+                        if (currentLevel < 5 && ownedInGroup.length === groupProps.length) {
+                            if (player.money >= cell.houseCost) {
+                                gameState.canBuild = true;
+                                document.getElementById('buildBtn').disabled = false;
+                                const levelNames = ['', '1级', '2级', '3级', '4级', '酒店'];
+                                addLog(`✅ 集齐${groupNames[cell.group]}！可建造第${levelNames[currentLevel + 1]} ($${cell.houseCost})`, 'event');
+                            } else {
+                                addLog(`${cell.name} 可以建造房屋，但资金不足 ($${cell.houseCost})`, 'system');
+                            }
+                        } else if (currentLevel >= 5) {
+                            addLog(`${cell.name} 已达到最高等级(酒店)`, 'system');
+                        } else if (ownedInGroup.length !== groupProps.length) {
+                            const need = groupProps.length - ownedInGroup.length;
+                            const missing = groupProps.filter(c => !player.properties.includes(c.id)).map(c => c.name).join('、');
+                            addLog(`⚠️ 集齐${groupNames[cell.group]}还需${need}个: ${missing}`, player.class);
+                        }
+                    }
+                    break;
+
+                case CELL_TYPES.CHANCE:
+                    await drawCard('chance');
+                    break;
+
+                case CELL_TYPES.CHEST:
+                    await drawCard('chest');
+                    break;
+
+                case CELL_TYPES.TAX:
+                    player.money -= cell.amount;
+                    addLog(`${player.name} 缴纳税款 $${cell.amount}`, player.class);
+                    showModal('税收', '💸', `${player.name} 需要缴纳税款 $${cell.amount}！`, 'tax');
+                    if (player.money < 0) {
+                        handleBankruptcy(playerIndex);
+                    }
+                    break;
+
+                case CELL_TYPES.JAIL:
+                    addLog(`${player.name} 只是参观监狱`, player.class);
+                    break;
+
+                case CELL_TYPES.GO_JAIL:
+                    player.inJail = true;
+                    player.jailTurns = 3;
+                    player.position = 8;
+                    updatePlayerPosition(playerIndex);
+                    addLog(`${player.name} 被捕入狱！`, player.class);
+                    showModal('入狱', '⛓️', `${player.name} 被捕入狱！停留3回合或支付 $50 保释。`, 'jail');
+                    break;
+            }
+        }
+
+        function getOwner(cellId) {
+            return gameState.players.find(p => p.properties.includes(cellId));
+        }
+
+        function calculateRent(cell, owner) {
+            const houseLevel = houseData[cell.id] || 0;
+
+            // 如果有房屋，按房屋等级计算租金
+            if (houseLevel > 0) {
+                if (houseLevel === 5) {
+                    // 酒店 (第5级)
+                    return cell.houseRents[3] * 2;
+                }
+                return cell.houseRents[houseLevel - 1];
+            }
+
+            // 没有房屋，检查是否有完整颜色组
+            let rent = cell.rent;
+            const groupProps = cells.filter(c => c.group === cell.group);
+            const ownedInGroup = groupProps.filter(c => owner.properties.includes(c.id));
+
+            if (ownedInGroup.length === groupProps.length) {
+                rent *= 2;
+            }
+
+            return rent;
+        }
+
+        async function drawCard(type) {
+            const cards = type === 'chance' ? chanceCards : chestCards;
+            const card = cards[Math.floor(Math.random() * cards.length)];
+            const player = gameState.players[gameState.currentPlayer];
+
+            showModal(
+                type === 'chance' ? '❓ 机会' : '📦 宝箱',
+                card.icon,
+                card.text,
+                type === 'chance' ? 'chance' : 'chest'
+            );
+
+            await sleep(600);
+
+            if (card.effect === 'money') {
+                player.money += card.value;
+                if (card.value > 0) {
+                    addLog(`${player.name} 获得 $${card.value}`, 'event');
+                    createParticles(document.getElementById(`player-${gameState.currentPlayer}`));
+                } else {
+                    addLog(`${player.name} 失去 $${Math.abs(card.value)}`, player.class);
+                }
+
+                if (player.money < 0) {
+                    handleBankruptcy(gameState.currentPlayer);
+                }
+            } else if (card.effect === 'move') {
+                await movePlayer(gameState.currentPlayer, card.value);
+                await handleCellEvent(gameState.currentPlayer);
+            }
+        }
+
+        function buyProperty() {
+            if (!gameState.canBuy) return;
+
+            const player = gameState.players[gameState.currentPlayer];
+            const cell = cells[player.position];
+
+            player.money -= cell.price;
+            player.properties.push(cell.id);
+            gameState.canBuy = false;
+
+            const cellEl = document.getElementById(`cell-${player.position}`);
+            const mark = document.createElement('div');
+            mark.className = 'owner-mark';
+            mark.style.background = player.color;
+            cellEl.appendChild(mark);
+
+            addLog(`${player.name} 购买了 ${cell.name}！`, player.class);
+            document.getElementById('buyBtn').disabled = true;
+            updatePlayerInfo();
+        }
+
+        function handleJail() {
+            const player = gameState.players[gameState.currentPlayer];
+
+            if (player.isAI) {
+                if (player.money >= 50) {
+                    player.money -= 50;
+                    player.inJail = false;
+                    player.jailTurns = 0;
+                    addLog(`${player.name} 支付保释金出狱`, player.class);
+                    rollDice();
+                } else {
+                    player.jailTurns--;
+                    if (player.jailTurns <= 0) {
+                        player.inJail = false;
+                        addLog(`${player.name} 刑满释放`, player.class);
+                    } else {
+                        addLog(`${player.name} 在监狱中，还剩 ${player.jailTurns} 回合`, player.class);
+                        endTurn();
+                    }
+                }
+            } else {
+                if (confirm('你在监狱中！支付 $50 保释金立即出狱吗？\n\n（取消则停留一回合，剩余' + player.jailTurns + '回合）')) {
+                    if (player.money >= 50) {
+                        player.money -= 50;
+                        player.inJail = false;
+                        player.jailTurns = 0;
+                        addLog(`${player.name} 支付保释金出狱`, player.class);
+                        document.getElementById('rollBtn').disabled = false;
+                    } else {
+                        alert('资金不足！');
+                        player.jailTurns--;
+                        if (player.jailTurns <= 0) {
+                            player.inJail = false;
+                        }
+                        endTurn();
+                    }
+                } else {
+                    player.jailTurns--;
+                    if (player.jailTurns <= 0) {
+                        player.inJail = false;
+                        addLog(`${player.name} 刑满释放`, player.class);
+                    } else {
+                        addLog(`${player.name} 在监狱中，还剩 ${player.jailTurns} 回合`, player.class);
+                    }
+                    endTurn();
+                }
+            }
+            updatePlayerInfo();
+        }
+
+        // 建造房屋 - 每回合只能建造一次
+        function buildHouse() {
+            if (!gameState.canBuild) return;
+
+            const player = gameState.players[gameState.currentPlayer];
+            const cell = cells[player.position];
+
+            // 检查是否拥有该地产
+            if (!player.properties.includes(cell.id)) {
+                addLog(`${player.name} 不拥有这块地产，无法建造`, player.class);
+                return;
+            }
+
+            const currentLevel = houseData[cell.id] || 0;
+
+            if (currentLevel >= 5) {
+                addLog(`${cell.name} 已经达到最大等级（酒店）`, 'system');
+                return;
+            }
+
+            // 检查是否有完整颜色组（房屋规则：需要有完整颜色组才能建房）
+            const groupProps = cells.filter(c => c.group === cell.group);
+            const ownedInGroup = groupProps.filter(c => player.properties.includes(c.id));
+
+            if (ownedInGroup.length !== groupProps.length) {
+                addLog(`需要拥有完整颜色组才能在 ${cell.name} 建造房屋！`, player.class);
+                showModal('无法建造', '🏠', `需要拥有完整颜色组才能建造房屋！\n请收集同一颜色的所有地产。`, 'normal');
+                return;
+            }
+
+            // 检查是否资金充足
+            if (player.money < cell.houseCost) {
+                addLog(`${player.name} 资金不足，无法建造房屋`, player.class);
+                return;
+            }
+
+            // 建造房屋
+            player.money -= cell.houseCost;
+            houseData[cell.id] = currentLevel + 1;
+
+            const levelNames = ['', '🏠 1级', '🏠🏠 2级', '🏠🏠🏠 3级', '🏠🏠🏠🏠 4级', '🏨 酒店'];
+            const levelName = levelNames[houseData[cell.id]];
+
+            addLog(`${player.name} 在 ${cell.name} 建造了 ${levelName}！`, player.class);
+
+            // 重新创建棋盘以显示房屋
+            createBoard();
+
+            // 更新玩家信息
+            updatePlayerInfo();
+
+            // 每回合只能建造一次，建造后禁用按钮
+            gameState.canBuild = false;
+            document.getElementById('buildBtn').disabled = true;
+            addLog(`本回合已建造房屋，如需继续建造请等待下一回合`, 'system');
+        }
+
+        // 检查是否可以建造房屋
+        function checkBuildAvailability() {
+            const player = gameState.players[gameState.currentPlayer];
+            const cell = cells[player.position];
+
+            if (player.properties.includes(cell.id)) {
+                const currentLevel = houseData[cell.id] || 0;
+                if (currentLevel < 5) {
+                    const groupProps = cells.filter(c => c.group === cell.group);
+                    const ownedInGroup = groupProps.filter(c => player.properties.includes(c.id));
+                    if (ownedInGroup.length === groupProps.length && player.money >= cell.houseCost) {
+                        document.getElementById('buildBtn').disabled = false;
+                        return;
+                    }
+                }
+            }
+            document.getElementById('buildBtn').disabled = true;
+        }
+
+        // ==================== 交易功能 ====================
+
+        let pendingTrade = null; // 待处理的交易请求
+
+        // 打开交易弹窗
+        function openTradeModal() {
+            if (gameState.players.length < 2) return;
+
+            const player = gameState.players[gameState.currentPlayer];
+
+            // 填充交易对象选择
+            const targetSelect = document.getElementById('tradeTarget');
+            targetSelect.innerHTML = '<option value="">选择交易对象</option>';
+            gameState.players.forEach((p, index) => {
+                if (index !== gameState.currentPlayer) {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = p.name;
+                    targetSelect.appendChild(option);
+                }
+            });
+
+            // 重置输入
+            document.getElementById('tradeOfferMoney').value = 0;
+            document.getElementById('tradeRequestMoney').value = 0;
+
+            // 填充我的地产
+            const offerContainer = document.getElementById('tradeOfferProperties');
+            offerContainer.innerHTML = '';
+            if (player.properties.length === 0) {
+                offerContainer.innerHTML = '<div style="color:#888;padding:10px;">无地产</div>';
+            } else {
+                player.properties.forEach(propId => {
+                    const cell = cells[propId];
+                    const houseLevel = houseData[propId] || 0;
+                    const houseIcon = houseLevel > 0 ? (houseLevel === 5 ? '🏨' : '🏠'.repeat(houseLevel)) : '';
+                    const item = document.createElement('div');
+                    item.className = 'trade-property-item';
+                    item.innerHTML = `
+                        <input type="checkbox" value="${propId}" id="offer_${propId}">
+                        <label for="offer_${propId}" style="cursor:pointer;flex:1;">
+                            ${cell.icon} ${cell.name} ${houseIcon}
+                        </label>
+                    `;
+                    offerContainer.appendChild(item);
+                });
+            }
+
+            // 填充对方的地产（先显示空，等选择对象后再填充）
+            const requestContainer = document.getElementById('tradeRequestProperties');
+            requestContainer.innerHTML = '<div style="color:#888;padding:10px;">请先选择交易对象</div>';
+
+            // 监听交易对象选择
+            targetSelect.onchange = function() {
+                const targetIndex = parseInt(this.value);
+                if (isNaN(targetIndex)) {
+                    requestContainer.innerHTML = '<div style="color:#888;padding:10px;">请先选择交易对象</div>';
+                    return;
+                }
+
+                const target = gameState.players[targetIndex];
+                requestContainer.innerHTML = '';
+                if (target.properties.length === 0) {
+                    requestContainer.innerHTML = '<div style="color:#888;padding:10px;">对方无地产</div>';
+                } else {
+                    target.properties.forEach(propId => {
+                        const cell = cells[propId];
+                        const houseLevel = houseData[propId] || 0;
+                        const houseIcon = houseLevel > 0 ? (houseLevel === 5 ? '🏨' : '🏠'.repeat(houseLevel)) : '';
+                        const item = document.createElement('div');
+                        item.className = 'trade-property-item';
+                        item.innerHTML = `
+                            <input type="checkbox" value="${propId}" id="request_${propId}">
+                            <label for="request_${propId}" style="cursor:pointer;flex:1;">
+                                ${cell.icon} ${cell.name} ${houseIcon}
+                            </label>
+                        `;
+                        requestContainer.appendChild(item);
+                    });
+                }
+            };
+
+            // 显示弹窗
+            document.getElementById('tradeModal').style.display = 'flex';
+        }
+
+        function closeTradeModal() {
+            document.getElementById('tradeModal').style.display = 'none';
+        }
+
+        function closeTradeConfirmModal() {
+            document.getElementById('tradeConfirmModal').style.display = 'none';
+        }
+
+        // 提交交易提议
+        function submitTradeOffer() {
+            const targetIndex = parseInt(document.getElementById('tradeTarget').value);
+            if (isNaN(targetIndex)) {
+                alert('请选择交易对象！');
+                return;
+            }
+
+            const offerMoney = parseInt(document.getElementById('tradeOfferMoney').value) || 0;
+            const requestMoney = parseInt(document.getElementById('tradeRequestMoney').value) || 0;
+
+            // 获取选择的地产
+            const offerProperties = [];
+            document.querySelectorAll('#tradeOfferProperties input[type="checkbox"]:checked').forEach(cb => {
+                offerProperties.push(parseInt(cb.value));
+            });
+
+            const requestProperties = [];
+            document.querySelectorAll('#tradeRequestProperties input[type="checkbox"]:checked').forEach(cb => {
+                requestProperties.push(parseInt(cb.value));
+            });
+
+            const fromPlayer = gameState.players[gameState.currentPlayer];
+            const toPlayer = gameState.players[targetIndex];
+
+            // 验证资金
+            if (offerMoney > fromPlayer.money) {
+                alert('你的资金不足！');
+                return;
+            }
+
+            // 创建交易请求
+            pendingTrade = {
+                from: gameState.currentPlayer,
+                to: targetIndex,
+                offerMoney: offerMoney,
+                offerProperties: offerProperties,
+                requestMoney: requestMoney,
+                requestProperties: requestProperties
+            };
+
+            closeTradeModal();
+
+            // 如果对方是AI，自动处理
+            if (toPlayer.isAI) {
+                handleAITrade();
+            } else {
+                // 显示交易确认弹窗给对方
+                showTradeConfirmModal();
+            }
+        }
+
+        // 显示交易确认界面
+        function showTradeConfirmModal() {
+            if (!pendingTrade) return;
+
+            const fromPlayer = gameState.players[pendingTrade.from];
+            const toPlayer = gameState.players[pendingTrade.to];
+
+            // 生成交易详情HTML
+            let detailsHTML = `
+                <div class="trade-details-row">
+                    <span>🧑‍💼 发起者:</span>
+                    <span style="color:#FFD700;">${fromPlayer.name}</span>
+                </div>
+                <div class="trade-details-row">
+                    <span>🎯 接收者:</span>
+                    <span style="color:#FFD700;">${toPlayer.name}</span>
+                </div>
+                <hr style="border-color:rgba(255,255,255,0.2);margin:15px 0;">
+                <h4>📤 ${fromPlayer.name} 提供:</h4>
+            `;
+
+            if (pendingTrade.offerMoney > 0) {
+                detailsHTML += `<div class="trade-details-row"><span>💰 现金:</span><span style="color:#4CAF50;">$${pendingTrade.offerMoney}</span></div>`;
+            }
+
+            if (pendingTrade.offerProperties.length > 0) {
+                detailsHTML += `<div style="margin:10px 0;">🏠 地产:</div>`;
+                pendingTrade.offerProperties.forEach(propId => {
+                    const cell = cells[propId];
+                    const houseLevel = houseData[propId] || 0;
+                    const houseIcon = houseLevel > 0 ? (houseLevel === 5 ? '🏨' : '🏠'.repeat(houseLevel)) : '';
+                    detailsHTML += `<div style="padding:5px 10px;background:rgba(76,175,80,0.2);border-radius:4px;margin:4px 0;">${cell.icon} ${cell.name} ${houseIcon}</div>`;
+                });
+            }
+
+            if (pendingTrade.offerMoney === 0 && pendingTrade.offerProperties.length === 0) {
+                detailsHTML += `<div style="color:#888;">无</div>`;
+            }
+
+            detailsHTML += `<hr style="border-color:rgba(255,255,255,0.2);margin:15px 0;"><h4>📥 请求:</h4>`;
+
+            if (pendingTrade.requestMoney > 0) {
+                detailsHTML += `<div class="trade-details-row"><span>💰 现金:</span><span style="color:#4CAF50;">$${pendingTrade.requestMoney}</span></div>`;
+            }
+
+            if (pendingTrade.requestProperties.length > 0) {
+                detailsHTML += `<div style="margin:10px 0;">🏠 地产:</div>`;
+                pendingTrade.requestProperties.forEach(propId => {
+                    const cell = cells[propId];
+                    const houseLevel = houseData[propId] || 0;
+                    const houseIcon = houseLevel > 0 ? (houseLevel === 5 ? '🏨' : '🏠'.repeat(houseLevel)) : '';
+                    detailsHTML += `<div style="padding:5px 10px;background:rgba(255,152,0,0.2);border-radius:4px;margin:4px 0;">${cell.icon} ${cell.name} ${houseIcon}</div>`;
+                });
+            }
+
+            if (pendingTrade.requestMoney === 0 && pendingTrade.requestProperties.length === 0) {
+                detailsHTML += `<div style="color:#888;">无</div>`;
+            }
+
+            document.getElementById('tradeOfferDetails').innerHTML = detailsHTML;
+            document.getElementById('tradeConfirmModal').style.display = 'flex';
+        }
+
+        // AI处理交易
+        function handleAITrade() {
+            if (!pendingTrade) return;
+
+            const fromPlayer = gameState.players[pendingTrade.from];
+            const toPlayer = gameState.players[pendingTrade.to];
+
+            // AI简单逻辑：计算总价值，如果收益大于等于支出则接受
+            let offerValue = pendingTrade.offerMoney;
+            pendingTrade.offerProperties.forEach(propId => {
+                const cell = cells[propId];
+                offerValue += cell.price;
+                // 房屋也计算价值
+                const houseLevel = houseData[propId] || 0;
+                if (houseLevel > 0) {
+                    offerValue += cell.houseCost * houseLevel;
+                }
+            });
+
+            let requestValue = pendingTrade.requestMoney;
+            pendingTrade.requestProperties.forEach(propId => {
+                const cell = cells[propId];
+                requestValue += cell.price;
+                const houseLevel = houseData[propId] || 0;
+                if (houseLevel > 0) {
+                    requestValue += cell.houseCost * houseLevel;
+                }
+            });
+
+            // AI接受条件：提供的价值 >= 请求的价值 * 1.2（要有20%利润才接受）
+            if (offerValue >= requestValue * 1.2) {
+                executeTrade();
+                showModal('交易成功', '🤝', `${toPlayer.name} 接受了你的交易提议！\n\n交易已完成。`, 'win');
+            } else {
+                pendingTrade = null;
+                showModal('交易失败', '❌', `${toPlayer.name} 拒绝了你的交易提议。\n\n(AI认为报价不够优惠)`, 'normal');
+            }
+        }
+
+        // 接受交易
+        function acceptTrade() {
+            if (!pendingTrade) return;
+
+            executeTrade();
+            closeTradeConfirmModal();
+            showModal('交易成功', '🤝', '交易已完成！', 'win');
+        }
+
+        // 拒绝交易
+        function rejectTrade() {
+            if (!pendingTrade) return;
+
+            const fromPlayer = gameState.players[pendingTrade.from];
+            addLog(`交易请求被 ${gameState.players[pendingTrade.to].name} 拒绝`, 'system');
+
+            pendingTrade = null;
+            closeTradeConfirmModal();
+        }
+
+        // 执行交易
+        function executeTrade() {
+            if (!pendingTrade) return;
+
+            const fromPlayer = gameState.players[pendingTrade.from];
+            const toPlayer = gameState.players[pendingTrade.to];
+
+            // 转移资金
+            fromPlayer.money -= pendingTrade.offerMoney;
+            toPlayer.money += pendingTrade.offerMoney;
+            toPlayer.money -= pendingTrade.requestMoney;
+            fromPlayer.money += pendingTrade.requestMoney;
+
+            // 转移地产 (从发起者到接收者)
+            pendingTrade.offerProperties.forEach(propId => {
+                const idx = fromPlayer.properties.indexOf(propId);
+                if (idx > -1) {
+                    fromPlayer.properties.splice(idx, 1);
+                    toPlayer.properties.push(propId);
+                }
+            });
+
+            // 转移地产 (从接收者到发起者)
+            pendingTrade.requestProperties.forEach(propId => {
+                const idx = toPlayer.properties.indexOf(propId);
+                if (idx > -1) {
+                    toPlayer.properties.splice(idx, 1);
+                    fromPlayer.properties.push(propId);
+                }
+            });
+
+            addLog(`🤝 ${fromPlayer.name} 与 ${toPlayer.name} 完成了交易！`, 'event');
+
+            // 刷新界面
+            createBoard();
+            updatePlayerInfo();
+
+            pendingTrade = null;
+        }
+
+        // ==================== 交易功能结束 ====================
+
+        function endTurn() {
+            gameState.canBuy = false;
+            gameState.canBuild = false;
+            document.getElementById('buyBtn').disabled = true;
+            document.getElementById('buildBtn').disabled = true;
+            document.getElementById('tradeBtn').disabled = true;
+            document.getElementById('endBtn').disabled = true;
+
+            // 检查游戏是否结束（只剩一个玩家有钱）
+            const activePlayers = gameState.players.filter(p => p.money > 0 || p.properties.length > 0);
+            if (activePlayers.length === 1) {
+                const winner = activePlayers[0];
+                gameState.gameOver = true;
+                showModal('游戏结束', '🏆', `${winner.name} 获胜！\n\n恭喜成为最富有的矿工！`, 'win');
+                return;
+            }
+
+            // 切换到下一个有资金的玩家
+            let nextPlayerIndex = (gameState.currentPlayer + 1) % gameState.players.length;
+            let loopCount = 0;
+
+            // 跳过破产的玩家
+            while ((gameState.players[nextPlayerIndex].money <= 0 && gameState.players[nextPlayerIndex].properties.length === 0) && loopCount < gameState.players.length) {
+                nextPlayerIndex = (nextPlayerIndex + 1) % gameState.players.length;
+                loopCount++;
+            }
+
+            gameState.currentPlayer = nextPlayerIndex;
+            updatePlayerInfo();
+
+            const nextPlayer = gameState.players[gameState.currentPlayer];
+            addLog(`轮到 ${nextPlayer.name}`, 'system');
+
+            if (!nextPlayer.isAI) {
+                document.getElementById('rollBtn').disabled = false;
+            } else {
+                setTimeout(aiTurn, 1200);
+            }
+        }
+
+        async function aiTurn() {
+            if (gameState.gameOver) return;
+
+            const player = gameState.players[gameState.currentPlayer];
+            if (!player.isAI) return;
+
+            // AI掷骰子
+            document.getElementById('rollBtn').disabled = true;
+
+            const dice1 = document.getElementById('dice1');
+            const dice2 = document.getElementById('dice2');
+
+            dice1.classList.add('rolling');
+            dice2.classList.add('rolling');
+
+            await sleep(600);
+
+            gameState.dice[0] = Math.floor(Math.random() * 6) + 1;
+            gameState.dice[1] = Math.floor(Math.random() * 6) + 1;
+
+            dice1.classList.remove('rolling');
+            dice2.classList.remove('rolling');
+
+            dice1.textContent = getDiceIcon(gameState.dice[0]);
+            dice2.textContent = getDiceIcon(gameState.dice[1]);
+
+            const total = gameState.dice[0] + gameState.dice[1];
+            addLog(`${player.name} 掷出了 ${total} 点 (${gameState.dice[0]}+${gameState.dice[1]})`, player.class);
+
+            await movePlayer(gameState.currentPlayer, total);
+            await handleCellEvent(gameState.currentPlayer);
+
+            updatePlayerInfo();
+
+            if (!gameState.gameOver) {
+                // AI购买逻辑
+                if (gameState.canBuy && player.money > 300) {
+                    await sleep(800);
+                    buyProperty();
+                }
+
+                // AI建造房屋逻辑
+                if (gameState.canBuild) {
+                    const cell = cells[player.position];
+                    if (player.money > cell.houseCost * 2) {
+                        await sleep(800);
+                        buildHouse();
+                    }
+                }
+
+                await sleep(1000);
+                endTurn();
+            }
+        }
+
+        function handleBankruptcy(playerIndex) {
+            const player = gameState.players[playerIndex];
+
+            addLog(`💔 ${player.name} 破产了！`, player.class);
+
+            // 破产玩家所有地产变为无主状态（房屋清零）
+            player.properties.forEach(propId => {
+                houseData[propId] = 0; // 清空房屋
+            });
+            player.properties = []; // 清空地产
+            player.money = 0; // 资金清零
+
+            // 刷新棋盘显示
+            createBoard();
+            updatePlayerInfo();
+
+            // 检查剩余活跃玩家数量
+            const activePlayers = gameState.players.filter(p => p.money > 0);
+
+            if (activePlayers.length <= 1) {
+                // 游戏结束
+                gameState.gameOver = true;
+                const winner = activePlayers[0];
+                showModal('游戏结束', '🏆', `${winner.name} 获胜！\n\n恭喜成为最富有的矿工！\n\n游戏结束方式：其他玩家全部破产`, 'win');
+            } else {
+                // 游戏继续，跳过破产玩家
+                showModal('玩家破产', '💔', `${player.name} 已破产！\n\n其所有地产已被银行收回。\n游戏继续...`, 'normal');
+
+                // 如果当前是破产玩家的回合，自动结束回合
+                if (gameState.currentPlayer === playerIndex) {
+                    setTimeout(() => {
+                        endTurn();
+                    }, 2000);
+                }
+            }
+        }
+
+        function showModal(title, icon, text, type) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalIcon').textContent = icon;
+            document.getElementById('modalText').textContent = text;
+            document.getElementById('modalContent').className = `modal-content ${type}`;
+            document.getElementById('modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        function addLog(message, type) {
+            const log = document.getElementById('gameLog');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+
+            const time = new Date().toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            entry.textContent = `[${time}] ${message}`;
+
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function createParticles(element) {
+            const rect = element.getBoundingClientRect();
+            const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4'];
+
+            for (let i = 0; i < 20; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = rect.left + rect.width / 2 + 'px';
+                particle.style.top = rect.top + rect.height / 2 + 'px';
+                particle.style.width = '10px';
+                particle.style.height = '10px';
+                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                particle.style.borderRadius = '50%';
+                particle.style.transition = 'all 1s ease-out';
+                document.body.appendChild(particle);
+
+                setTimeout(() => {
+                    const angle = (Math.PI * 2 * i) / 20;
+                    const distance = 50 + Math.random() * 100;
+                    particle.style.transform = `translate(${Math.cos(angle) * distance}px, ${Math.sin(angle) * distance}px) scale(0)`;
+                    particle.style.opacity = '0';
+                }, 10);
+
+                setTimeout(() => particle.remove(), 1000);
+            }
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function showRules() {
+            document.getElementById('mainMenu').style.display = 'none';
+            document.getElementById('rulesPage').style.display = 'block';
+        }
+
+        function hideRules() {
+            document.getElementById('rulesPage').style.display = 'none';
+            document.getElementById('mainMenu').style.display = 'block';
+        }
+
+        // 窗口大小改变时重新创建棋盘
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                if (document.getElementById('gameArea').style.display !== 'none') {
+                    createBoard();
+                }
+            }, 250);
+        });
+
+        // 初始化
+        createStars();
+    </script>
+</body>
+</html>
